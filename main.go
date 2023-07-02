@@ -97,7 +97,7 @@ func main() {
 
 	// Process sections
 	hexCollection := []string{}
-	for _, v := range _elf.Sections {
+	for _, v := range _elf.Sections { // TODO think of something better to map - this is not working reliably.
 		var b []byte
 		if v.SectionHeader.Type != elf.SHT_NOBITS {
 			b, err = v.Data()
