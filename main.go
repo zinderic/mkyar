@@ -24,7 +24,7 @@ func ioReader(file string) io.ReaderAt {
 func main() {
 
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: elftest elf_file")
+		fmt.Println("Usage: mkyar <elf_file>")
 		os.Exit(1)
 	}
 	f := ioReader(os.Args[1])
