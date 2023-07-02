@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 func check(e error) {
@@ -79,7 +80,7 @@ func main() {
 
 		if len(b) > 10 {
 			sectionEntry := MapSection(b)
-			if sectionEntry != "00000000000000000000" { // TODO make func to check for more than 2 consecutive zeroes
+			if noZeros(sectionEntry) {
 				hexCollection = append(hexCollection, sectionEntry)
 			}
 		}
@@ -92,4 +93,9 @@ func main() {
 // MapSection returns 10 bytes hex string for a []byte section
 func MapSection(b []byte) string {
 	return hex.EncodeToString(b[0:10])
+}
+
+// noZeroes returns true if there are no zeros in the string
+func noZeros(s string) bool {
+	return (strings.Count(s, "0") <= 1)
 }
