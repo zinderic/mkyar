@@ -1,3 +1,7 @@
+# What is mkyar?
+
+I was looking for awhile for a simple tool that can create Yara rules that can match binary files. I didn't find such tool so I made this one.
+
 # How to use:
 
 This runs the tool to generate `test.yar` file of `gping` and then runs the `yara` compiler to execute the rule.
