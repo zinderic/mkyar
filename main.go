@@ -1,13 +1,24 @@
 package main
 
 import (
+	"crypto/md5"
 	"debug/elf"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"text/template"
 )
+
+type YaraData struct {
+	RuleName    string
+	Description string
+	Author      string
+	Date        string
+	Hexes       []string
+	Hash        string
+}
 
 func check(e error) {
 	if e != nil {
@@ -29,6 +40,38 @@ func mapSection(b []byte) string {
 // noZeroes returns true if there are no zeros in the string
 func noZeros(s string) bool {
 	return (strings.Count(s, "0") <= 1)
+}
+
+func md5HashOfFile(f string) (string, error) {
+	file, err := os.Open(f)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hasher := md5.New()
+	_, err = io.Copy(hasher, file)
+	if err != nil {
+		return "", err
+	}
+	hash := hex.EncodeToString(hasher.Sum(nil)[:])
+	return hash, nil
+}
+
+func createYaraRule(hexes []string, hash string) error {
+	tmplData := YaraData{
+		RuleName:    "test_name",                       // TODO fill in with better name
+		Description: "created by mkyar version v0_0_1", // TODO add version of the tool here so we know what rules were created by what version
+		Author:      "mkyar",
+		Date:        "2023-07-02", // TODO fill that automatically based on current date in YYYY-MM-DD format
+		Hexes:       hexes,
+		Hash:        hash,
+	}
+	template, err := template.ParseFiles("yar.tmpl")
+	if err != nil {
+		return err
+	}
+	template.Execute(os.Stdout, tmplData)
+	return nil
 }
 
 func main() {
@@ -67,7 +110,8 @@ func main() {
 			}
 		}
 	}
-
-	fmt.Printf("hexCollection: %v\n", hexCollection)
+	hash, err := md5HashOfFile(os.Args[1]) // TODO replace os.Args[1] with variable
+	check(err)
+	createYaraRule(hexCollection, hash)
 
 }
