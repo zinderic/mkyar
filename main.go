@@ -58,6 +58,7 @@ func main() {
 		mach = "x86_64"
 	}
 
+	// Print info about the file
 	fmt.Printf("File Header: ")
 	fmt.Println(_elf.FileHeader)
 	fmt.Printf("ELF Class: %s\n", arch)
@@ -67,12 +68,24 @@ func main() {
 	fmt.Printf("Entry Point: %d\n", _elf.Entry)
 	fmt.Printf("Section Addresses: %v\n", _elf.Sections)
 
-	bytes, err := _elf.Sections[len(_elf.Sections)-1].Data()
-	if err != nil {
-		panic(err)
+	// Process sections
+	hexCollection := []string{}
+	for _, v := range _elf.Sections {
+		var b []byte
+		if v.SectionHeader.Type != elf.SHT_NOBITS {
+			b, err = v.Data()
+			check(err)
+		}
+
+		if len(b) > 10 {
+			sectionEntry := MapSection(b)
+			if sectionEntry != "00000000000000000000" { // TODO make func to check for more than 2 consecutive zeroes
+				hexCollection = append(hexCollection, sectionEntry)
+			}
+		}
 	}
 
-	fmt.Printf("MapSection(bytes): %v\n", MapSection(bytes))
+	fmt.Printf("hexCollection: %v\n", hexCollection)
 
 }
 
