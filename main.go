@@ -11,6 +11,8 @@ import (
 	"text/template"
 )
 
+var binaryFile = os.Args[1]
+
 type YaraData struct {
 	RuleName    string
 	Description string
@@ -26,12 +28,6 @@ func check(e error) {
 	}
 }
 
-func ioReader(file string) io.ReaderAt {
-	r, err := os.Open(file)
-	check(err)
-	return r
-}
-
 // mapSection returns 10 bytes hex string for a []byte section
 func mapSection(b []byte) string {
 	return hex.EncodeToString(b[0:10])
@@ -42,6 +38,7 @@ func noZeros(s string) bool {
 	return (strings.Count(s, "0") <= 1)
 }
 
+// md5HashOfFile returns md5 hash sum of a file
 func md5HashOfFile(f string) (string, error) {
 	file, err := os.Open(f)
 	if err != nil {
@@ -57,6 +54,7 @@ func md5HashOfFile(f string) (string, error) {
 	return hash, nil
 }
 
+// createYaraRule uses the hexes and hash of a binary file to create the Yara rule
 func createYaraRule(hexes []string, hash string) error {
 	tmplData := YaraData{
 		RuleName:    "test_name",                       // TODO fill in with better name
@@ -80,7 +78,8 @@ func main() {
 		fmt.Println("Usage: mkyar <elf_file>")
 		os.Exit(1)
 	}
-	f := ioReader(os.Args[1])
+	f, err := os.Open(binaryFile)
+	check(err)
 	_elf, err := elf.NewFile(f)
 	check(err)
 
@@ -110,7 +109,7 @@ func main() {
 			}
 		}
 	}
-	hash, err := md5HashOfFile(os.Args[1]) // TODO replace os.Args[1] with variable
+	hash, err := md5HashOfFile(binaryFile)
 	check(err)
 	createYaraRule(hexCollection, hash)
 
