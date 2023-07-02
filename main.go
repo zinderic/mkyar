@@ -11,7 +11,7 @@ import (
 	"text/template"
 )
 
-var binaryFile = os.Args[1]
+var binaryFile = ""
 
 type YaraData struct {
 	RuleName    string
@@ -77,6 +77,8 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: mkyar <elf_file>")
 		os.Exit(1)
+	} else {
+		binaryFile = os.Args[1]
 	}
 	f, err := os.Open(binaryFile)
 	check(err)
