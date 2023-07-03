@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -86,28 +87,18 @@ func main() {
 	_elf, err := elf_reader.ParseELFFile(f)
 	check(err)
 
-	// // Read and decode ELF identifier
-	// var ident [16]uint8
-	// f.ReadAt(ident[0:], 0)
-	// check(err)
-
-	// if ident[0] != '\x7f' || ident[1] != 'E' || ident[2] != 'L' || ident[3] != 'F' {
-	// 	fmt.Printf("Bad magic number at %d\n", ident[0:4])
-	// 	os.Exit(1)
-	// }
-
 	// Process sections
 	hexCollection := []string{}
 	count := _elf.GetSectionCount()
 	var fileContent []byte
 	for i := uint16(0); i < count; i++ {
 		if i == 0 {
-			fmt.Printf("Section 0: NULL section (no name)\n")
+			log.Printf("Section 0: NULL section (no name)\n")
 			continue
 		}
 		fileContent, err = _elf.GetSectionContent(uint16(i))
 		if err != nil {
-			fmt.Printf("Failed getting section %d content: %s\n", i, err)
+			log.Printf("Failed getting section %d content: %s\n", i, err)
 			continue
 		}
 		if len(fileContent) > 10 {
@@ -119,6 +110,7 @@ func main() {
 	}
 	hash, err := md5HashOfFile(binaryFile)
 	check(err)
-	createYaraRule(hexCollection, hash)
+	err = createYaraRule(hexCollection, hash)
+	check(err)
 
 }
