@@ -2,13 +2,14 @@ package main
 
 import (
 	"crypto/md5"
-	"debug/elf"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"text/template"
+
+	"github.com/yalue/elf_reader"
 )
 
 var binaryFile = ""
@@ -80,32 +81,37 @@ func main() {
 	} else {
 		binaryFile = os.Args[1]
 	}
-	f, err := os.Open(binaryFile)
+	f, err := os.ReadFile(binaryFile)
 	check(err)
-	_elf, err := elf.NewFile(f)
-	check(err)
-
-	// Read and decode ELF identifier
-	var ident [16]uint8
-	f.ReadAt(ident[0:], 0)
+	_elf, err := elf_reader.ParseELFFile(f)
 	check(err)
 
-	if ident[0] != '\x7f' || ident[1] != 'E' || ident[2] != 'L' || ident[3] != 'F' {
-		fmt.Printf("Bad magic number at %d\n", ident[0:4])
-		os.Exit(1)
-	}
+	// // Read and decode ELF identifier
+	// var ident [16]uint8
+	// f.ReadAt(ident[0:], 0)
+	// check(err)
+
+	// if ident[0] != '\x7f' || ident[1] != 'E' || ident[2] != 'L' || ident[3] != 'F' {
+	// 	fmt.Printf("Bad magic number at %d\n", ident[0:4])
+	// 	os.Exit(1)
+	// }
 
 	// Process sections
 	hexCollection := []string{}
-	for _, v := range _elf.Sections { // TODO think of something better to map - this is not working reliably.
-		var b []byte
-		if v.SectionHeader.Type != elf.SHT_NOBITS {
-			b, err = v.Data()
-			check(err)
+	count := _elf.GetSectionCount()
+	var fileContent []byte
+	for i := uint16(0); i < count; i++ {
+		if i == 0 {
+			fmt.Printf("Section 0: NULL section (no name)\n")
+			continue
 		}
-
-		if len(b) > 10 {
-			sectionEntry := mapSection(b)
+		fileContent, err = _elf.GetSectionContent(uint16(i))
+		if err != nil {
+			fmt.Printf("Failed getting section %d content: %s\n", i, err)
+			continue
+		}
+		if len(fileContent) > 10 {
+			sectionEntry := mapSection(fileContent)
 			if noZeros(sectionEntry) {
 				hexCollection = append(hexCollection, sectionEntry)
 			}
