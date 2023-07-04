@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"embed"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -13,7 +14,11 @@ import (
 	"github.com/yalue/elf_reader"
 )
 
-var binaryFile = ""
+var (
+	binaryFile = ""
+	//go:embed yar.tmpl
+	tmpl embed.FS
+)
 
 type YaraData struct {
 	RuleName    string
@@ -66,7 +71,7 @@ func createYaraRule(hexes []string, hash string) error {
 		Hexes:       hexes,
 		Hash:        hash,
 	}
-	template, err := template.ParseFiles("yar.tmpl")
+	template, err := template.ParseFS(tmpl, "yar.tmpl")
 	if err != nil {
 		return err
 	}
