@@ -10,7 +10,19 @@ There are many use cases that such tool can enable:
 * detect library uses within binaries
 * have fun with Yara :)
 
+# How to install
+
+```
+go install github.com/zinderic/mkyar@latest
+```
+
 # How to use:
+
+```
+$ mkyar
+Usage: mkyar <elf_file>
+$
+```
 
 This runs the tool to generate `test.yar` file of `gping` and then runs the `yara` compiler to execute the rule.
 
