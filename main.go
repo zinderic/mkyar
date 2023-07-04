@@ -93,7 +93,6 @@ func main() {
 	var fileContent []byte
 	for i := uint16(0); i < count; i++ {
 		if i == 0 {
-			log.Printf("Section 0: NULL section (no name)\n")
 			continue
 		}
 		fileContent, err = _elf.GetSectionContent(uint16(i))
