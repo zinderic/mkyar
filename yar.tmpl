@@ -13,6 +13,5 @@ rule {{ .RuleName }} : {{ .Description }}
     {{ end }}
     condition:
         all of them and
-        filesize < 10MB and
         hash.md5(0, filesize) == "{{.Hash}}"
 }
