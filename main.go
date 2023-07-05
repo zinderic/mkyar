@@ -8,16 +8,23 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/yalue/elf_reader"
 )
+
+const YYYYMMDD = "2006-01-02"
 
 var (
 	binaryFile = ""
 	//go:embed yar.tmpl
 	tmpl embed.FS
+
+	//go:embed version.txt
+	mkyarVersion string
 )
 
 type YaraData struct {
@@ -63,11 +70,12 @@ func md5HashOfFile(f string) (string, error) {
 
 // createYaraRule uses the hexes and hash of a binary file to create the Yara rule
 func createYaraRule(hexes []string, hash string) error {
+	now := time.Now().UTC()
 	tmplData := YaraData{
-		RuleName:    "test_name",                       // TODO fill in with better name
-		Description: "created by mkyar version v0_0_1", // TODO add version of the tool here so we know what rules were created by what version
+		RuleName:    "rule_" + path.Base(binaryFile),
+		Description: "created by mkyar " + mkyarVersion,
 		Author:      "mkyar",
-		Date:        "2023-07-02", // TODO fill that automatically based on current date in YYYY-MM-DD format
+		Date:        now.Format(YYYYMMDD),
 		Hexes:       hexes,
 		Hash:        hash,
 	}
