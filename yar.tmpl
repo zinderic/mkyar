@@ -1,11 +1,11 @@
 import "hash"
  
-rule {{ .RuleName }} : {{ .Description }}
+rule {{ .RuleName }}
 {
     meta:
         author = "{{ .Author }}"
         date = "{{ .Date }}"
-        description = "An example YARA rule for gping - https://github.com/orf/gping/releases/download/gping-v1.12.0/gping-Linux-x86_64.tar.gz"
+        description = "{{ .Description }}"
         modified = "{{ .Date }}"
     strings:
     {{ range $key, $value := .Hexes }}
