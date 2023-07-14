@@ -42,8 +42,8 @@ func check(e error) {
 	}
 }
 
-// mapSection returns 10 bytes hex string for a []byte section
-func mapSection(b []byte) string {
+// mapData returns 10 bytes hex string for a []byte section
+func mapData(b []byte) string {
 	return hex.EncodeToString(b[0:10])
 }
 
@@ -102,27 +102,54 @@ func main() {
 
 	// Process sections
 	hexCollection := []string{}
-	count := _elf.GetSectionCount()
-	var fileContent []byte
-	for i := uint16(0); i < count; i++ {
-		if i == 0 {
-			continue
-		}
-		fileContent, err = _elf.GetSectionContent(uint16(i))
-		if err != nil {
-			log.Printf("Failed getting section %d content: %s\n", i, err)
-			continue
-		}
-		if len(fileContent) > 10 {
-			sectionEntry := mapSection(fileContent)
-			if noZeros(sectionEntry) {
-				hexCollection = append(hexCollection, sectionEntry)
-			}
-		}
-	}
+	err, hexCollection = collectHex(_elf)
 	hash, err := md5HashOfFile(binaryFile)
 	check(err)
 	err = createYaraRule(hexCollection, hash)
 	check(err)
 
+}
+
+func collectHex(_elf elf_reader.ELFFile) (error, []string) {
+	var err error
+	var hexCollection []string
+	// Sections
+	countSec := _elf.GetSectionCount()
+	var fileContentSec []byte
+	for i := uint16(0); i < countSec; i++ {
+		if i == 0 {
+			continue
+		}
+		fileContentSec, err = _elf.GetSectionContent(i)
+		if err != nil {
+			log.Printf("Failed getting section %d content: %s\n", i, err)
+			continue
+		}
+		if len(fileContentSec) > 10 {
+			sectionEntry := mapData(fileContentSec)
+			if noZeros(sectionEntry) {
+				hexCollection = append(hexCollection, sectionEntry)
+			}
+		}
+	}
+	// Segments
+	count := _elf.GetSegmentCount()
+	var fileContent []byte
+	for i := uint16(0); i < count; i++ {
+		if i == 0 {
+			continue
+		}
+		fileContent, err = _elf.GetSegmentContent(i)
+		if err != nil {
+			log.Printf("Failed getting section %d content: %s\n", i, err)
+			continue
+		}
+		if len(fileContent) > 10 {
+			sectionEntry := mapData(fileContent)
+			if noZeros(sectionEntry) {
+				hexCollection = append(hexCollection, sectionEntry)
+			}
+		}
+	}
+	return nil, hexCollection
 }
