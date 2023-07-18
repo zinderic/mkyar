@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"debug/elf"
 	"embed"
 	"encoding/hex"
 	"fmt"
@@ -12,8 +13,6 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"github.com/yalue/elf_reader"
 )
 
 const YYYYMMDD = "2006-01-02"
@@ -42,16 +41,6 @@ func check(e error) {
 	}
 }
 
-// mapData returns 10 bytes hex string for a []byte section
-func mapData(b []byte) string {
-	return hex.EncodeToString(b[0:10])
-}
-
-// noZeroes returns true if there are no zeros in the string
-func noZeros(s string) bool {
-	return (strings.Count(s, "0") <= 1)
-}
-
 // md5HashOfFile returns md5 hash sum of a file
 func md5HashOfFile(f string) (string, error) {
 	file, err := os.Open(f)
@@ -68,11 +57,59 @@ func md5HashOfFile(f string) (string, error) {
 	return hash, nil
 }
 
+// splithexCollection splits a hex string into chunks of specified size.
+func splithexCollection(hexStr string, chunkSize int) []string {
+	var chunks []string
+	for i := 0; i < len(hexStr); i += chunkSize {
+		end := i + chunkSize
+		if end > len(hexStr) {
+			end = len(hexStr)
+		}
+		chunks = append(chunks, hexStr[i:end])
+	}
+	return chunks
+}
+
+// stringsContainZero checks if a string contains any "0" characters.
+func stringsContainZero(str string) bool {
+	return strings.Contains(str, "0")
+}
+
+// stringsRepeatSameCharacter checks if a string repeats the same character.
+func stringsRepeatSameCharacter(str string) bool {
+	for i := 1; i < len(str); i++ {
+		if str[i] != str[0] {
+			return false
+		}
+	}
+	return true
+}
+
+// selectRepresentativeStrings selects unique strings from the provided slice that do not contain any "0" characters
+// and do not repeat the same character.
+func selectRepresentativeStrings(strings []string, count int) []string {
+	var selectedStrings []string
+	uniqueStrings := make(map[string]bool)
+
+	for _, str := range strings {
+		if !stringsContainZero(str) && !stringsRepeatSameCharacter(str) && !uniqueStrings[str] {
+			uniqueStrings[str] = true
+			selectedStrings = append(selectedStrings, str)
+			if len(selectedStrings) == count {
+				break
+			}
+		}
+	}
+
+	return selectedStrings
+}
+
 // createYaraRule uses the hexes and hash of a binary file to create the Yara rule
 func createYaraRule(hexes []string, hash string) error {
+	ruleName := strings.Replace(path.Base(binaryFile), ".", "_", -1)
 	now := time.Now().UTC()
 	tmplData := YaraData{
-		RuleName:    "rule_" + path.Base(binaryFile),
+		RuleName:    "rule_" + ruleName,
 		Description: "created by mkyar " + mkyarVersion,
 		Author:      "mkyar",
 		Date:        now.Format(YYYYMMDD),
@@ -95,61 +132,28 @@ func main() {
 	} else {
 		binaryFile = os.Args[1]
 	}
-	f, err := os.ReadFile(binaryFile)
-	check(err)
-	_elf, err := elf_reader.ParseELFFile(f)
-	check(err)
+	file, err := elf.Open(binaryFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	var hexCollection []string
+	for _, section := range file.Sections {
+		if section.Flags&elf.SHF_EXECINSTR != 0 {
+			data, err := section.Data()
+			if err != nil {
+				log.Fatal(err)
+			}
 
-	// Process sections
-	hexCollection := []string{}
-	err, hexCollection = collectHex(_elf)
+			hexStr := hex.EncodeToString(data)
+			hexCollection = append(hexCollection, splithexCollection(hexStr, 6)...)
+		}
+	}
+
+	selectedHexCollection := selectRepresentativeStrings(hexCollection, 20)
 	hash, err := md5HashOfFile(binaryFile)
 	check(err)
-	err = createYaraRule(hexCollection, hash)
+	err = createYaraRule(selectedHexCollection, hash)
 	check(err)
 
-}
-
-func collectHex(_elf elf_reader.ELFFile) (error, []string) {
-	var err error
-	var hexCollection []string
-	// Sections
-	countSec := _elf.GetSectionCount()
-	var fileContentSec []byte
-	for i := uint16(0); i < countSec; i++ {
-		if i == 0 {
-			continue
-		}
-		fileContentSec, err = _elf.GetSectionContent(i)
-		if err != nil {
-			log.Printf("Failed getting section %d content: %s\n", i, err)
-			continue
-		}
-		if len(fileContentSec) > 10 {
-			sectionEntry := mapData(fileContentSec)
-			if noZeros(sectionEntry) {
-				hexCollection = append(hexCollection, sectionEntry)
-			}
-		}
-	}
-	// Segments
-	count := _elf.GetSegmentCount()
-	var fileContent []byte
-	for i := uint16(0); i < count; i++ {
-		if i == 0 {
-			continue
-		}
-		fileContent, err = _elf.GetSegmentContent(i)
-		if err != nil {
-			log.Printf("Failed getting section %d content: %s\n", i, err)
-			continue
-		}
-		if len(fileContent) > 10 {
-			sectionEntry := mapData(fileContent)
-			if noZeros(sectionEntry) {
-				hexCollection = append(hexCollection, sectionEntry)
-			}
-		}
-	}
-	return nil, hexCollection
 }
